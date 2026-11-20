@@ -37,6 +37,12 @@ public sealed class CubieCube
     // A clockwise quarter turn of each face, read off the sticker model so both always agree.
     public static readonly CubieCube[] FaceMoves = new CubieCube[6];
 
+    // Where a single piece goes under each move: [move][state] -> state, where the state of a
+    // corner is position * 3 + twist and of an edge position * 2 + flip (24 states each).
+    public const int PieceStates = 24;
+    public static readonly int[][] CornerTurn = new int[CubeState.MoveCount][];
+    public static readonly int[][] EdgeTurn = new int[CubeState.MoveCount][];
+
     public readonly int[] Cp = new int[Corners];
     public readonly int[] Co = new int[Corners];
     public readonly int[] Ep = new int[Edges];
@@ -57,6 +63,28 @@ public sealed class CubieCube
         int[] solvedFaces = CubeState.Solved();
         for (int face = 0; face < 6; face++)
             FaceMoves[face] = FromFaces(CubeState.Apply(solvedFaces, face * 3), out _);
+
+        for (int face = 0; face < 6; face++)
+        {
+            // After a turn q, slot i holds what was in slot q.Cp[i], turned q.Co[i] further.
+            CubieCube q = FaceMoves[face];
+            var corner = new int[PieceStates];
+            var edge = new int[PieceStates];
+            for (int i = 0; i < Corners; i++)
+                for (int o = 0; o < 3; o++)
+                    corner[q.Cp[i] * 3 + o] = i * 3 + (o + q.Co[i]) % 3;
+            for (int i = 0; i < Edges; i++)
+                for (int o = 0; o < 2; o++)
+                    edge[q.Ep[i] * 2 + o] = i * 2 + (o + q.Eo[i]) % 2;
+            int[] c = corner, e = edge;
+            for (int k = 0; k < 3; k++)
+            {
+                CornerTurn[face * 3 + k] = c;
+                EdgeTurn[face * 3 + k] = e;
+                c = Array.ConvertAll(c, s => corner[s]);
+                e = Array.ConvertAll(e, s => edge[s]);
+            }
+        }
     }
 
     public CubieCube()
@@ -191,6 +219,23 @@ public sealed class CubieCube
         co.CopyTo(Co);
         ep.CopyTo(Ep);
         eo.CopyTo(Eo);
+    }
+
+    // The cube that undoes this one: this * Inverse() is solved.
+    public CubieCube Inverse()
+    {
+        var inv = new CubieCube();
+        for (int i = 0; i < Corners; i++)
+        {
+            inv.Cp[Cp[i]] = i;
+            inv.Co[Cp[i]] = (3 - Co[i]) % 3;
+        }
+        for (int i = 0; i < Edges; i++)
+        {
+            inv.Ep[Ep[i]] = i;
+            inv.Eo[Ep[i]] = Eo[i];
+        }
+        return inv;
     }
 
     public void ApplyMove(int move)

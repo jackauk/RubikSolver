@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using Godot;
 
-// The 54 stickers of a 3x3 cube, stored as palette colors (-1 for a blank sticker) and indexed
+// The 54 stickers of a 3x3 cube, stored as palette colors (Blank for a sticker not painted yet,
+// and in a target Any for "any color") and indexed
 // face by face in the order U, R, F, D, L, B - the order Kociemba's solver uses. Each face is
 // read row by row as it looks in the unfolded net:
 //
@@ -18,12 +19,16 @@ using Godot;
 //
 // x points right, y up and z towards the viewer, so the front face is at z = +1. Moves are
 // numbered face * 3 + (quarter turns - 1): 0 = U, 1 = U2, 2 = U', 3 = R, ... 17 = B'. A turn is
-// clockwise as seen looking straight at that face.
+// clockwise as seen looking straight at that face. FlipMove (z2) is not a face turn: it views
+// the whole cube upside down about the front-back axis, so U and D swap places, R and L too,
+// and the front stays (the beginner solver searches on the cube seen that way).
 public static class CubeState
 {
     public const int Up = 0, Right = 1, Front = 2, Down = 3, Left = 4, Back = 5;
     public const int Blank = -1;
-    public const int MoveCount = 18;
+    public const int Any = -2; // a target sticker that may end up any color (drawn as a rainbow)
+    public const int MoveCount = 18; // the face turns; FlipMove comes after them
+    public const int FlipMove = MoveCount;
 
     public const string FaceLetters = "URFDLB";
     public static readonly string[] FaceNames = { "Up", "Right", "Front", "Down", "Left", "Back" };
@@ -37,7 +42,7 @@ public static class CubeState
     public static readonly Vector3I[] Positions = new Vector3I[54];
 
     static readonly Dictionary<int, int> stickerAt = new();
-    static readonly int[][] moveTargets = new int[MoveCount][]; // [move][sticker] -> where it goes
+    static readonly int[][] moveTargets = new int[MoveCount + 1][]; // [move][sticker] -> where it goes
 
     static CubeState()
     {
@@ -74,6 +79,15 @@ public static class CubeState
             }
             moveTargets[m] = targets;
         }
+
+        // z2: half a turn about the z axis takes (x, y, z) to (-x, -y, z), normals included.
+        var flip = new int[54];
+        for (int i = 0; i < 54; i++)
+        {
+            Vector3I p = Positions[i], n = Normals[i / 9];
+            flip[i] = StickerAt(new Vector3I(-p.X, -p.Y, p.Z), Array.IndexOf(Normals, new Vector3I(-n.X, -n.Y, n.Z)));
+        }
+        moveTargets[FlipMove] = flip;
     }
 
     public static int[] Solved()
@@ -108,9 +122,9 @@ public static class CubeState
         return true;
     }
 
-    public static int Inverse(int move) => move / 3 * 3 + 2 - move % 3;
+    public static int Inverse(int move) => move == FlipMove ? FlipMove : move / 3 * 3 + 2 - move % 3;
 
-    public static string MoveName(int move) => FaceLetters[move / 3] + (move % 3) switch
+    public static string MoveName(int move) => move == FlipMove ? "z2" : FaceLetters[move / 3] + (move % 3) switch
     {
         0 => "",
         1 => "2",

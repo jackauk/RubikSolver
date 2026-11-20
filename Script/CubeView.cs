@@ -21,8 +21,9 @@ public partial class CubeView : Node3D
 
     readonly Dictionary<Vector3I, Node3D> cubies = new();
     readonly MeshInstance3D[] stickers = new MeshInstance3D[54];
-    readonly StandardMaterial3D[] materials = new StandardMaterial3D[7]; // palette, then blank
+    readonly StandardMaterial3D[] materials = new StandardMaterial3D[8]; // palette, blank, any
     readonly Label3D[] faceLabels = new Label3D[6];
+    Label3D titleLabel;
 
     readonly List<(Node3D node, Vector3 home)> turning = new();
     Vector3 turnAxis;
@@ -38,6 +39,15 @@ public partial class CubeView : Node3D
         for (int i = 0; i < 6; i++)
             materials[i] = new StandardMaterial3D { AlbedoColor = Palette.Colors[i], Roughness = 0.35f };
         materials[6] = new StandardMaterial3D { AlbedoColor = Palette.BlankColor, Roughness = 0.6f };
+        // The rainbow spans each sticker: triplanar mapping in the sticker's own space.
+        materials[7] = new StandardMaterial3D
+        {
+            AlbedoTexture = Palette.Rainbow,
+            Uv1Triplanar = true,
+            Uv1Scale = Vector3.One / StickerSize,
+            Uv1Offset = Vector3.One * 0.5f,
+            Roughness = 0.5f
+        };
 
         var bodyMesh = new BoxMesh { Size = Vector3.One * CubieSize };
         var bodyMaterial = new StandardMaterial3D { AlbedoColor = new Color(0.04f, 0.04f, 0.05f), Roughness = 0.5f };
@@ -96,7 +106,27 @@ public partial class CubeView : Node3D
     public void SetColors(int[] colors)
     {
         for (int i = 0; i < 54; i++)
-            stickers[i].MaterialOverride = materials[colors[i] < 0 ? 6 : colors[i]];
+            stickers[i].MaterialOverride = materials[colors[i] == CubeState.Any ? 7 : colors[i] < 0 ? 6 : colors[i]];
+    }
+
+    // A name shown above the cube.
+    public void SetTitle(string text)
+    {
+        if (titleLabel == null)
+        {
+            titleLabel = new Label3D
+            {
+                FontSize = 72,
+                OutlineSize = 14,
+                PixelSize = 0.007f,
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
+                Position = new Vector3(0f, 2.85f, 0f),
+                Modulate = Colors.White,
+                OutlineModulate = new Color(0f, 0f, 0f, 0.8f)
+            };
+            AddChild(titleLabel);
+        }
+        titleLabel.Text = text;
     }
 
     // Marks the face label of the next move to make, or none for -1.

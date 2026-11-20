@@ -56,7 +56,10 @@ public partial class NetView : Control
         for (int i = 0; i < 54; i++)
         {
             Rect2 rect = CellRect(i);
-            DrawRect(rect, Palette.Get(colors[i]));
+            if (colors[i] == CubeState.Any)
+                DrawTextureRect(Palette.Rainbow, rect, false);
+            else
+                DrawRect(rect, Palette.Get(colors[i]));
             if (i == hover)
                 DrawRect(rect.Grow(1f), Colors.White, false, 2f);
             if (i % 9 == 4)

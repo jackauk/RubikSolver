@@ -7,10 +7,11 @@ public partial class OrbitCamera : Camera3D
     [Export] public float Distance = 10.5f;
     [Export] public float Yaw = 35f;   // degrees; 0 looks straight at the front face
     [Export] public float Pitch = 28f; // degrees above the cube
+    public readonly float ViewPitch = 28f; // the usual Pitch, above the cube
     [Export] public float MinDistance = 6f;
     [Export] public float MaxDistance = 20f;
     [Export] public float DegreesPerPixel = 0.35f;
-    [Export] public Vector2 ScreenShift = new(-0.155f, -0.1f); // per unit of distance
+    [Export] public Vector2 ScreenShift = new(-0.155f, -0.125f); // per unit of distance
 
     float yaw, pitch, distance;
 
@@ -33,7 +34,7 @@ public partial class OrbitCamera : Camera3D
     public void ResetView()
     {
         Yaw = 35f;
-        Pitch = 28f;
+        Pitch = ViewPitch;
     }
 
     public override void _Process(double delta)
